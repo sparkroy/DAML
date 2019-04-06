@@ -10,7 +10,9 @@ from lib.functions.triplet_loss import triplet_loss as F_tloss
 from lib.common.evaluation import evaluate_cluster
 
 import chainer
-import chainer.functions as F
+import torch
+import torch.nn.functional as F
+
 
 import copy
 import os
@@ -285,30 +287,35 @@ def evaluate(model, dis_model, epoch_iterator, distance='euclidean', normalize=F
     return nmi, f1
 
 def triplet_loss(y,alpha=1.0):
-    a, p, n= F.split_axis(y, 3, axis=0)
-    distance = F.sum((a - p) ** 2.0, axis = 1) - F.sum((a - n) ** 2.0, axis = 1) +alpha
+    a, p, n= split_to_three(y)
 
-    return F.average(F.relu(distance)) / 2
-
+    distance = torch.sum((a - p) ** 2.0, dim = 1) - torch.sum((a - n) ** 2.0, dim = 1) +alpha
+    return torch.mean(F.relu(distance)) / 2
 
 def adv_loss(y,alpha=1.0):
-    a, p, n= F.split_axis(y, 3, axis=0)
-    distance = -F.sum((a - p) ** 2.0, axis = 1) + F.sum((a - n) ** 2.0, axis = 1) - alpha
+    a, p, n = split_to_three(y)
+    distance = -torch.sum((a - p) ** 2.0, dim = 1) + torch.sum((a - n) ** 2.0, dim = 1) - alpha
 
-    return F.average(F.relu(distance)) / 2
+    return torch.mean(F.relu(distance)) / 2
 
 def l2_norm(fake,batch):
-    _, _, fake_n= F.split_axis(fake, 3, axis=0)
-    _, _, n = F.split_axis(batch, 3, axis=0)
+    _, _, fake_n = split_to_three(fake)
+    _, _, n = split_to_three(batch)
 
-    l2 = F.sum((fake_n - n) ** 2.0, axis = 1) 
+    l2 = torch.sum((fake_n - n) ** 2.0, dim = 1) 
 
-    return F.average(l2)
+    return torch.mean(l2)
 
 def l2_hard(fake,batch):
-    _, _, fake_n= F.split_axis(fake, 3, axis=0)
-    a, _, _ = F.split_axis(batch, 3, axis=0)
+    _, _, fake_n= split_to_three(fake)
+    a, _, _ = split_to_three(batch)
 
-    l2 = F.sum((fake_n - a) ** 2.0, axis = 1) 
+    l2 = torch.sum((fake_n - a) ** 2.0, dim = 1) 
 
-    return F.average(l2)
+    return torch.mean(l2)
+
+def split_to_three(tensor):
+    #split along dim=0 into three pieces
+    d = y.shape[0]
+    a, p, n= torch.split(tensor, d//3, dim=0)
+    return a, p, n

@@ -2,7 +2,8 @@
 
 
 import numpy as np
-import chainer.functions as F
+import torch
+import torch.nn.functional as F
 
 
 
@@ -25,5 +26,5 @@ def triplet_loss(a,p,n,alpha=1.0):
 
     """
     
-    distance = F.sum((a - p) ** 2.0, axis = 1) - F.sum((a - n) ** 2.0, axis = 1) +alpha
-    return F.average(F.relu(distance)) / 2
+    distance = torch.sum((a - p) ** 2.0, dim = 1) - torch.sum((a - n) ** 2.0, dim = 1) +alpha
+    return torch.mean(F.relu(distance)) / 2
